@@ -1,2 +1,3 @@
 # The Requiremens.txt file will contain all the libraries you require
 pandas
+bcrypt == 4.2.0
