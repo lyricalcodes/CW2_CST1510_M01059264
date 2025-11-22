@@ -1,4 +1,5 @@
 import bcrypt
+import time
 import os
 
 #defining user data file
@@ -104,6 +105,65 @@ def display_menu():
     print("[3] Exit")
     print("-"*50)
 
+
+def check_password_strength(password):
+
+    is_too_short = False
+    is_medium_length = False
+    is_long_enough = False
+    has_ucase = False
+    has_lcase = False
+    has_digit = False
+    has_special = False
+    is_common = False
+    common_password = ['password', '123456', '123456789', 'qwerty', 'abc123', '111111', '123123', 'letmein', 'iloveyou', 'admin', 'welcome', 'monkey', 'dragon', 'football', 'sunshine', 'princess', 'baseball', 'password1', 'superman', 'qwerty123']
+    special_char = ['!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '_', '=', '+', '[', ']', '{', '}', ';', ':', ',', '.', '<', '>', '/', '?', '|', '`', '~']
+
+    #for loop to check type of letter in the password using string methods
+    for x in password:
+        if x.isupper():
+            has_ucase = True
+        elif x.islower():
+            has_lcase = True
+        elif x.isdigit():
+            has_digit = True
+
+    #comparing password to a generated list of 20 common passwords
+    for y in common_password:
+        if y == password:
+            is_common = True
+
+    #checking password length
+    if (len(password) > 7) and (len(password) < 10):
+        is_too_short = True
+    elif (len(password) > 9) and (len(password) < 13): 
+        is_medium_length = True
+    else:
+        is_long_enough = True 
+
+    #checking if there are special characters in the password
+    for z in password:
+        if z in special_char:
+            has_special = True
+
+    #checking types of characters in password to determine strength of password
+    char_types = has_ucase + has_lcase + has_digit + has_special
+
+    if is_common:
+        return "Weak (common password)"
+    
+    if is_too_short or char_types <= 1:
+        return "Weak"
+    
+    if is_medium_length and char_types >= 2:
+        return "Medium"
+    
+    if is_long_enough and char_types >= 4:
+        return "Strong"
+
+    return "Medium"
+
+
 def main():
     #Main program loop.
     print("\nWelcome to the Week 7 Authentication System!")
@@ -135,6 +195,10 @@ def main():
             if password != password_confirm:
                 print("Error: Passwords do not match.")
                 continue
+
+            #checking password strength
+            password_strength = check_password_strength(password)
+            print(password_strength)
 
             # Register the user
             if register_user(username, password):
