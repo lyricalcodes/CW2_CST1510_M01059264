@@ -1,93 +1,74 @@
 import pandas as pd
+from pathlib import Path
 from app.data.db import connect_database
 
-def insert_dataset(name, source, category, size):
-    """Insert new dataset."""
-    #connect to database
-    conn = connect_database()
+def insert_dataset(conn, dataset_name, category, source, last_updated, record_count, file_size_mb, created_at):
+    """Insert a new dataset into datasets metadata and return its row ID."""
+
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO datasets_metadata 
-        (name, source, category, size)
-        VALUES (?, ?, ?, ?)
-    """, (name, source, category, size))
+        INSERT INTO datasets_metadata  
+        (dataset_name, category, source, last_updated, record_count, file_size_mb, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (dataset_name, category, source, last_updated, record_count, file_size_mb, created_at))
     conn.commit()
     dataset_id = cursor.lastrowid
-    conn.close()
+
     return dataset_id
 
-def get_dataset_by_name(name):
-    """Retrieve dataset by name."""
-    conn = connect_database()
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT * FROM datasets_metadata WHERE name = ?",
-        (name,)
-    )
-    dataset = cursor.fetchone()
-    conn.close()
-    return dataset
+def update_dataset_size(conn, dataset_name, file_size_mb):
+    """Update dataset size and return the number of rows updated."""
 
-def get_datasets_by_source(source):
-    """Retrieve dataset by source."""
-    conn = connect_database()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT * FROM datasets_metadata WHERE source = ?",
-        (source,)
-    )
-    datasets = cursor.fetchall()
-    conn.close()
-    return datasets
-
-def get_datasets_by_category(category):
-    """Retrieve dataset by category."""
-    conn = connect_database()
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT * FROM datasets_metadata WHERE category = ?",
-        (category,)
-    )
-    datasets = cursor.fetchall()
-    conn.close()
-    return datasets
-
-def update_dataset_size(name, size):
-    """Update dataset size."""
-    conn = connect_database()
-    cursor = conn.cursor()
-    cursor.execute(
-        """UPDATE datasets_metadata SET size = ? WHERE name = ?""",
-        (size, name)
+        """UPDATE datasets_metadata SET file_size_mb = ? WHERE dataset_name = ?""",
+        (file_size_mb, dataset_name)
     )
     conn.commit()
-    conn.close()
+
     return cursor.rowcount
 
-def delete_dataset(name):
+def delete_dataset(conn, id):
     """Delete dataset by name."""
-    conn= connect_database()
+
     cursor = conn.cursor()
     cursor.execute(
-        """DELETE FROM datasets_metadata WHERE name = ?""", (name,)
+        """DELETE FROM datasets_metadata WHERE id = ?""", (id,)
     )
     conn.commit()
-    conn.close()
+
     return cursor.rowcount
 
-def get_all_datasets():
+def get_all_datasets(conn):
     """Get all datasets as DataFrame."""
-    conn = connect_database()
+
     df = pd.read_sql_query(
         "SELECT * FROM datasets_metadata ORDER BY id DESC",
         conn
     )
-    conn.close()
+
     return df
 
-def load_dataset_data_to_sql():
-    """Loading sample data from dataset metadata csv to sql database."""
-    df = pd.read_csv('app/data/datasets_metadata.csv')
-    conn = connect_database()
-    df.to_sql('datasets_metadata', conn, if_exists='replace', index=False)
-    conn.close()
+def load_dataset_data_to_sql(conn, csv_path, table_name):
+    """Loading sample data from datasets metadata csv to sql database."""
+
+    if not csv_path.exists():
+        print(f"⚠️ CSV file not found: {csv_path}")
+        return 0
+    
+    # Reading csv using pandas
+    try:
+        df = pd.read_csv(csv_path)
+    except Exception as e:
+        print(f"⚠️ Failed to read CSV: {e}")
+        return 0
+    
+    # Insert data into datasets metadata table
+    try:
+        df.to_sql(name=table_name, con=conn, if_exists='append', index=False)
+        row_count = len(df)
+        print(f"✅ Successfully loaded {row_count} rows into '{table_name}'.")
+        return row_count
+    except Exception as e:
+        print(f"⚠️ Failed to load data into table: {e}")
+        return 0

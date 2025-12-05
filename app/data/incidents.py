@@ -1,93 +1,74 @@
 import pandas as pd
+from pathlib import Path
 from app.data.db import connect_database
 
-def insert_incident(title, severity, status, date):
-    """Insert new incident."""
-    #connect to database
-    conn = connect_database()
+def insert_incident(conn, date, incident_type, severity, status, description, reported_by=None):
+    """Insert a new incident into cyber_incidents and return its row ID."""
+    
     cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO cyber_incidents 
-        (title, severity, status, date)
-        VALUES (?, ?, ?, ?)
-    """, (title, severity, status, date))
+        (date, incident_type, severity, status, description, reported_by)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (date, incident_type, severity, status, description, reported_by))
     conn.commit()
     incident_id = cursor.lastrowid
-    conn.close()
+
     return incident_id
 
-def get_incident_by_title(title):
-    """Retrieve incident by title."""
-    conn = connect_database()
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT * FROM cyber_incidents WHERE title = ?",
-        (title,)
-    )
-    incident = cursor.fetchone()
-    conn.close()
-    return incident
+def update_incident_status(conn, id, new_status):
+    """Update the status of an incident and returns the number of rows updated."""
 
-def get_incidents_by_severity(severity):
-    """Retrieve incident by severity."""
-    conn = connect_database()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT * FROM cyber_incidents WHERE severity = ?",
-        (severity,)
-    )
-    severity_t = cursor.fetchall()
-    conn.close()
-    return severity_t
-
-def get_incidents_by_status(status):
-    """Retrieve incident by status."""
-    conn = connect_database()
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT * FROM cyber_incidents WHERE status = ?",
-        (status,)
-    )
-    status_t = cursor.fetchall()
-    conn.close()
-    return status_t
-
-def update_incident_status(title, status):
-    """Update incident status."""
-    conn = connect_database()
-    cursor = conn.cursor()
-    cursor.execute(
-        """UPDATE cyber_incidents SET status = ? WHERE title = ?""",
-        (status, title)
+        """UPDATE cyber_incidents SET status = ? WHERE id = ?""",
+        (new_status, id)
     )
     conn.commit()
-    conn.close()
+
     return cursor.rowcount
 
-def delete_incident(title):
-    """Delete incident by title."""
-    conn= connect_database()
+def delete_incident(conn, id):
+    """Delete an incident by its id and returning the number of rows deleted."""
+
     cursor = conn.cursor()
     cursor.execute(
-        """DELETE FROM cyber_incidents WHERE title = ?""", (title,)
+        """DELETE FROM cyber_incidents WHERE id = ?""", (id,)
     )
     conn.commit()
-    conn.close()
+
     return cursor.rowcount
 
-def get_all_incidents_df():
+def get_all_incidents_df(conn):
     """Get all incidents as DataFrame."""
-    conn = connect_database()
+
     df = pd.read_sql_query(
         "SELECT * FROM cyber_incidents ORDER BY id DESC",
         conn
     )
-    conn.close()
+
     return df
 
-def load_incident_data_to_sql():
+def load_incident_data_to_sql(conn, csv_path, table_name):
     """Loading sample data from cyberincidents csv to sql database."""
-    df = pd.read_csv('app/data/cyber_incidents.csv')
-    conn = connect_database()
-    df.to_sql('cyber_incidents', conn, if_exists='replace', index=False)
-    conn.close()
+
+    if not csv_path.exists():
+        print(f"⚠️ CSV file not found: {csv_path}")
+        return 0
+    
+    # Reading csv using pandas
+    try:
+        df = pd.read_csv(csv_path)
+    except Exception as e:
+        print(f"⚠️ Failed to read CSV: {e}")
+        return 0
+    
+    # Insert data into cyber incidents table
+    try:
+        df.to_sql(name=table_name, con=conn, if_exists='append', index=False)
+        row_count = len(df)
+        print(f"✅ Successfully loaded {row_count} rows into '{table_name}'.")
+        return row_count
+    except Exception as e:
+        print(f"⚠️ Failed to load data into table: {e}")
+        return 0
