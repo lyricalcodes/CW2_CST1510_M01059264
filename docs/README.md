@@ -19,3 +19,5 @@ This system allows users to register accounts and log in with proper pass
 - Data Storage: Plain text file (`users.txt`) with comma-separated values
 - Password Security: One-way hashing, no plaintext storage
 - Validation: Username (3-20 alphanumeric characters), Password (6-50 characters; containing at least 1 capital letter, 1 lower case letter, and 1 number)
+
+To run enter streamlit run Home.py
