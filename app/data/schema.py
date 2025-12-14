@@ -21,14 +21,12 @@ def create_cyber_incidents_table(conn):
     cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS cyber_incidents (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT,
-            incident_type TEXT,
+            incident_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             severity TEXT NOT NULL,
+            category TEXT,
             status TEXT DEFAULT 'Open',
-            description TEXT,
-            reported_by TEXT,
-            created_at TEXT TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            description TEXT
         )
     """)
     conn.commit()
@@ -39,14 +37,12 @@ def create_datasets_metadata_table(conn):
     cursor = conn.cursor()
     cursor.execute("""
             CREATE TABLE IF NOT EXISTS datasets_metadata (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            dataset_name TEXT NOT NULL,
-            category TEXT,
-            source TEXT,
-            last_updated TEXT,
-            record_count INTEGER,
-            file_size_mb REAL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            dataset_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            rows INTEGER,
+            columns INTEGER,
+            uploaded_by TEXT,
+            upload_date INTEGER
         )
     """)
     conn.commit()
@@ -57,17 +53,13 @@ def create_it_tickets_table(conn):
     cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS it_tickets (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            ticket_id TEXT UNIQUE NOT NULL,
+            ticket_id INTEGER PRIMARY KEY AUTOINCREMENT,
             priority TEXT NOT NULL,
-            status TEXT DEFAULT 'Open',
-            category TEXT,
-            subject TEXT NOT NULL,
             description TEXT,
-            created_date TEXT,
-            resolved_date TEXT,
+            status TEXT DEFAULT 'Open',
             assigned_to TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            resolution_time_hours INTEGER
         )
     """)
     conn.commit()
@@ -75,6 +67,14 @@ def create_it_tickets_table(conn):
 
 def create_all_tables(conn):
     """Create all tables."""
+    # Drop tables if they exist to ensure clean slate
+    cursor = conn.cursor()
+    cursor.execute("DROP TABLE IF EXISTS users")
+    cursor.execute("DROP TABLE IF EXISTS cyber_incidents")
+    cursor.execute("DROP TABLE IF EXISTS datasets_metadata")
+    cursor.execute("DROP TABLE IF EXISTS it_tickets")
+    conn.commit()
+    
     create_users_table(conn)
     create_cyber_incidents_table(conn)
     create_datasets_metadata_table(conn)

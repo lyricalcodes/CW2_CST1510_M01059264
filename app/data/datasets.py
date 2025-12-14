@@ -2,73 +2,72 @@ import pandas as pd
 from pathlib import Path
 from app.data.db import connect_database
 
-def insert_dataset(conn, dataset_name, category, source, last_updated, record_count, file_size_mb, created_at):
-    """Insert a new dataset into datasets metadata and return its row ID."""
+def load_datasets_metadata_to_sql(conn, csv_path, table_name="datasets_metadata"):
+    """Load dataset metadata CSV into the SQLite table."""
+    
+    csv_path = Path(csv_path)
+    
+    if not csv_path.exists():
+        print(f"CSV file not found: {csv_path}")
+        return 0
+        
+    df = pd.read_csv(csv_path)
 
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO datasets_metadata  
-        (dataset_name, category, source, last_updated, record_count, file_size_mb, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (dataset_name, category, source, last_updated, record_count, file_size_mb, created_at))
-    conn.commit()
-    dataset_id = cursor.lastrowid
+    # Drop dataset_id if present, since it's autoincrement
+    if "dataset_id" in df.columns:
+        df = df.drop(columns=["dataset_id"])
 
-    return dataset_id
+    df.to_sql(name=table_name, con=conn, if_exists='append', index=False)
+    row_count = len(df)
+    print(f"Successfully loaded {row_count} rows into '{table_name}'.")
+    return row_count
 
-def update_dataset_size(conn, dataset_name, file_size_mb):
-    """Update dataset size and return the number of rows updated."""
-
-    cursor = conn.cursor()
-    cursor.execute(
-        """UPDATE datasets_metadata SET file_size_mb = ? WHERE dataset_name = ?""",
-        (file_size_mb, dataset_name)
-    )
-    conn.commit()
-
-    return cursor.rowcount
-
-def delete_dataset(conn, id):
-    """Delete dataset by name."""
-
-    cursor = conn.cursor()
-    cursor.execute(
-        """DELETE FROM datasets_metadata WHERE id = ?""", (id,)
-    )
-    conn.commit()
-
-    return cursor.rowcount
 
 def get_all_datasets(conn):
     """Get all datasets as DataFrame."""
 
     df = pd.read_sql_query(
-        "SELECT * FROM datasets_metadata ORDER BY id DESC",
+        "SELECT * FROM datasets_metadata ORDER BY dataset_id DESC",
         conn
     )
-
     return df
 
-def load_dataset_data_to_sql(conn, csv_path, table_name):
-    """Loading sample data from datasets metadata csv to sql database."""
+def insert_dataset(conn, name, rows, columns, uploaded_by, upload_date):
+    """Insert a new dataset into datasets metadata and return its row dataset_id."""
 
-    if not csv_path.exists():
-        print(f"⚠️ CSV file not found: {csv_path}")
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO datasets_metadata  
+        (name, rows, columns, uploaded_by, upload_date)
+        VALUES (?, ?, ?, ?, ?)
+    """, (name, rows, columns, uploaded_by, upload_date))
+    conn.commit()
+    dataset_id = cursor.lastrowid
+
+    return cursor.lastrowid
+
+def update_dataset(conn, dataset_id, **kwargs):
+    """Update a dataset record by dataset_id. Accepts column=value pairs."""
+    if not kwargs:
         return 0
     
-    # Reading csv using pandas
-    try:
-        df = pd.read_csv(csv_path)
-    except Exception as e:
-        print(f"⚠️ Failed to read CSV: {e}")
-        return 0
+    columns = ", ".join([f"{k} = ?" for k in kwargs])
+    values = list(kwargs.values())
+    values.append(dataset_id)
     
-    # Insert data into datasets metadata table
-    try:
-        df.to_sql(name=table_name, con=conn, if_exists='append', index=False)
-        row_count = len(df)
-        print(f"✅ Successfully loaded {row_count} rows into '{table_name}'.")
-        return row_count
-    except Exception as e:
-        print(f"⚠️ Failed to load data into table: {e}")
-        return 0
+    cursor = conn.cursor()
+    cursor.execute(f"UPDATE datasets_metadata SET {columns} WHERE dataset_id = ?", values)
+    conn.commit()
+    return cursor.rowcount
+
+def delete_dataset(conn, dataset_id):
+    """Delete dataset by name."""
+
+    cursor = conn.cursor()
+    cursor.execute(
+        """DELETE FROM datasets_metadata WHERE dataset_id = ?""", (dataset_id,)
+    )
+    conn.commit()
+
+    return cursor.rowcount
+

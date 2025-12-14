@@ -1,8 +1,8 @@
 import sqlite3
 from pathlib import Path
 
-# Define path
-DB_PATH = Path("DATA") / "intelligence_platform.db"
+# Define path relative to this file's directory
+DB_PATH = Path(__file__).parent.parent.parent / "DATA" / "intelligence_platform.db"
 
 # Create DATA folder if it doesn't exist
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)

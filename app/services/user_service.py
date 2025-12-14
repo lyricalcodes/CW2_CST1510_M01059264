@@ -40,27 +40,26 @@ def migrate_users_from_file(conn, filepath='DATA/users.txt'):
     conn.commit()
     print(f"✅ Migrated {migrated_count} users from {file_path.name}")
 
-# Verify users were migrated
-conn = connect_database()
-cursor = conn.cursor()
+    # Verify users were migrated
+    conn = connect_database()
+    cursor = conn.cursor()
 
-# Query all users
-cursor.execute("SELECT id, username, role FROM users")
-users = cursor.fetchall()
+    # Query all users
+    cursor.execute("SELECT id, username, role FROM users")
+    users = cursor.fetchall()
 
-print(" Users in database:")
-print(f"{'ID':<5} {'Username':<15} {'Role':<10}")
-print("-" * 35)
-for user in users:
-    print(f"{user[0]:<5} {user[1]:<15} {user[2]:<10}")
+    print(" Users in database:")
+    print(f"{'ID':<5} {'Username':<15} {'Role':<10}")
+    print("-" * 35)
+    for user in users:
+        print(f"{user[0]:<5} {user[1]:<15} {user[2]:<10}")
 
-print(f"\nTotal users: {len(users)}")
-conn.close()
+    print(f"\nTotal users: {len(users)}")
+    conn.close()
 
-def register_user(username, password, role='user'):
+def register_user(conn, username, password, role='user'):
     """Register new user with password hashing."""
 
-    conn = connect_database()
     cursor = conn.cursor()
 
     # Check if user already exists
@@ -81,21 +80,21 @@ def register_user(username, password, role='user'):
         (username, password_hash, role)
     )
     conn.commit()
-    conn.close()
 
     return True, f"User '{username}' registered successfully!"
 
-def login_user(username, password):
+def login_user(conn, username, password):
     """Authenticate user."""
 
-    conn = connect_database()
     cursor = conn.cursor()
 
     # Find user
     cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
     user = cursor.fetchone()
-    conn.close()
 
+    if not user:
+        return False, "User not found."
+    
     # Verify password (user[2] is password_hash column)
     stored_hash = user[2]
     password_bytes = password.encode('utf-8')
