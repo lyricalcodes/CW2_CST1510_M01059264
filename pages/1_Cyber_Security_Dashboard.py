@@ -91,7 +91,7 @@ st.subheader("Visual Analytics")
 
 if not incidents.empty:
     #ensuring that created_at is datetime
-    incidents['timestamp'] = pd.to_datetime(incidents['timestamp'])
+    incidents['timestamp'] = pd.to_datetime(incidents['timestamp'], format='ISO8601')
     #bar chart to count incidents by type
     threat_counts = incidents.groupby("category").size().reset_index(name="Count")
     fig_bar = px.bar(
